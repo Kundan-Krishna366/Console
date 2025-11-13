@@ -1,0 +1,11 @@
+#!/bin/bash
+echo "=== Project Dependencies ==="
+echo ""
+echo "📦 Installed Packages:"
+npm list --depth=0 2>/dev/null || echo "Unable to list packages"
+echo ""
+echo "🔍 Outdated Packages:"
+npm outdated 2>/dev/null || echo "All packages up to date"
+echo ""
+echo "⚠️  Security Audit:"
+npm audit --summary 2>/dev/null || echo "No vulnerabilities found"

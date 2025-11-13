@@ -3,31 +3,45 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
-const SAFE_COMMANDS = ['ls', 'pwd', 'whoami', 'date', 'echo', 'cat', 'grep', 'find', 'df', 'free', 'uptime'];
 
-export async function POST(req: NextRequest) {
-  const { command } = await req.json();
-  
-  if (!command) {
-    return NextResponse.json({ error: 'Command is required' }, { status: 400 });
-  }
+// Extended whitelist of safe commands
+const SAFE_COMMANDS = [
+  'ls', 'pwd', 'whoami', 'date', 'echo', 'cat', 'grep', 'find', 
+  'df', 'du', 'ps', 'top', 'uptime', 'free', 'uname',
+  'wc', 'head', 'tail', 'sort', 'uniq', 'tree',
+  'git', 'npm', 'node', 'which', 'env', 'printenv',
+  'hostname', 'ifconfig', 'netstat', 'ping', 'curl',
+  'history', 'clear', 'man', 'help'
+];
 
-  const baseCmd = command.trim().split(' ')[0];
-
-  if (!SAFE_COMMANDS.includes(baseCmd)) {
-    return NextResponse.json({ 
-      error: `Command '${baseCmd}' not allowed. Safe commands: ${SAFE_COMMANDS.join(', ')}` 
-    }, { status: 403 });
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const { stdout, stderr } = await execAsync(command, { 
-      timeout: 5000,
-      maxBuffer: 1024 * 1024 
-    });
+    const { command } = await request.json();
     
-    return NextResponse.json({ output: stdout || stderr, command });
+    if (!command || typeof command !== 'string') {
+      return NextResponse.json({ error: 'Invalid command' }, { status: 400 });
+    }
+
+    const baseCommand = command.trim().split(' ')[0];
+    
+    if (!SAFE_COMMANDS.includes(baseCommand)) {
+      return NextResponse.json({ 
+        error: `Command '${baseCommand}' is not allowed. Allowed: ${SAFE_COMMANDS.join(', ')}` 
+      }, { status: 403 });
+    }
+
+    const { stdout, stderr } = await execAsync(command, {
+      timeout: 10000,
+      maxBuffer: 1024 * 1024
+    });
+
+    return NextResponse.json({ 
+      output: stdout || stderr || 'Command executed successfully'
+    });
+
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message || 'Command execution failed'
+    }, { status: 500 });
   }
 }
